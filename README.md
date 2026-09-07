@@ -11,6 +11,7 @@
 3. **💡 Explainable AI (SHAP Waterfall & Plain-Language Translation)**: Feature attribution waterfall charts and non-technical executive risk breakdowns.
 4. **⚖️ Decision Rules Engine**: Automated evaluation of empirical policy rules (e.g. debt-to-income caps, overdue credit escalation).
 5. **💬 Talk-to-Data (Gemini LLM NL-to-SQL Engine)**: Conversational natural language query engine backed by Google Gemini LLM, SQLite database, strict security validation, and conversation memory.
+6. **🐳 Docker Containerization**: Zero-config containerized deployment via `docker compose`.
 
 ---
 
@@ -70,6 +71,38 @@ User Question + Conversation Memory (Session State)
 
 ---
 
+## 🐳 Docker Deployment Instructions
+
+### 1. Create Environment File
+Copy `.env.example` to `.env` and add your Gemini API Key:
+```bash
+cp .env.example .env
+```
+Edit `.env`:
+```env
+GEMINI_API_KEY=your_actual_gemini_api_key_here
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+### 2. Build and Start Container
+Run the application using Docker Compose:
+```bash
+docker compose up --build
+```
+> The container automatically mounts `./datasets` (read-only), `./data`, and `./models/saved_models` so the SQLite database index and pre-trained LightGBM models are available instantly without regenerating expensive artifacts.
+
+### 3. Access Application
+Open your web browser at:
+**`http://localhost:8501`**
+
+### 4. Stop Container
+To stop the running Docker application:
+```bash
+docker compose down
+```
+
+---
+
 ## 🧠 Prompt Design & Token Optimization
 
 - **Schema Definition**: Concise, token-optimized schema representation of SQLite tables (`applications`, `bureau_summary`, `previous_applications_summary`) included in system prompt ([nl2sql/prompts.py](file:///d:/Projects/CrediSense-AI/nl2sql/prompts.py)).
@@ -122,7 +155,7 @@ The engine supports dynamic Gemini translations and pre-validated fallback patte
 
 ---
 
-## ⚡ Quick Start Guide
+## ⚡ Local Setup without Docker
 
 ### 1. Installation
 ```bash
@@ -131,13 +164,7 @@ cd CrediSense-AI
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-```bash
-cp .env.example .env
-# Edit .env and set GEMINI_API_KEY
-```
-
-### 3. Launch Streamlit Application
+### 2. Launch Application
 ```bash
 streamlit run ui/app.py
 ```

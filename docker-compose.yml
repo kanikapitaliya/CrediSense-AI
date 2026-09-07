@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  credisense-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: credisense-ai-app
+    ports:
+      - "8501:8501"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - ./datasets:/app/datasets:ro
+      - ./data:/app/data
+      - ./models/saved_models:/app/models/saved_models
+    restart: unless-stopped

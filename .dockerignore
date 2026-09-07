@@ -1,0 +1,14 @@
+datasets/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.git/
+.gitignore
+.DS_Store
+*.db
+*.sqlite
