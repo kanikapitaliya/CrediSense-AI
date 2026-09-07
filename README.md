@@ -190,13 +190,11 @@ CrediSense-AI/
 └── README.md
 ```
 
-> 📦 `datasets/` (raw Home Credit CSVs) and `models/saved_models/` (trained artifacts) are intentionally **not committed to Git** — see [`.gitignore`](.gitignore) — and are mounted as Docker volumes instead.
-
 ---
 
 ## 🐳 Quick Start (Docker — Recommended)
 
-**Prerequisites:** Docker Desktop, and the raw dataset CSVs placed in `./datasets/` (download from the [Kaggle competition page](https://www.kaggle.com/competitions/home-credit-default-risk/data)).
+**Prerequisites:** Docker Desktop, and the raw dataset CSVs placed in `./datasets/`
 
 ```bash
 # 1. Clone the repo
