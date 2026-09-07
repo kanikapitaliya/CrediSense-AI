@@ -2,6 +2,7 @@ import os
 import joblib
 import pandas as pd
 import numpy as np
+import warnings
 from pathlib import Path
 from typing import Dict, List, Tuple
 import shap
@@ -16,6 +17,8 @@ FEATURE_TRANSLATIONS = {
     'EXT_SOURCE_3': 'External Bureau Score 3',
     'EXT_SOURCE_2': 'External Bureau Score 2',
     'EXT_SOURCE_1': 'External Bureau Score 1',
+    'EXT_SOURCE_PROD': 'External Score Product Factor',
+    'EXT_SOURCE_STD': 'External Score Variance',
     'PAYMENT_RATE': 'Annual Loan Payment-to-Credit Rate',
     'ANNUITY_TO_INCOME_RATIO': 'Annuity-to-Income Ratio',
     'CREDIT_TO_INCOME_RATIO': 'Credit-to-Income Ratio',
@@ -34,8 +37,26 @@ FEATURE_TRANSLATIONS = {
     'AMT_ANNUITY': 'Requested Annuity Amount',
     'AMT_CREDIT': 'Requested Loan Credit Amount',
     'AMT_INCOME_TOTAL': 'Total Annual Income',
+    'AMT_GOODS_PRICE': 'Goods Purchase Price',
     'DAYS_BIRTH': 'Applicant Age (Days)',
-    'DAYS_EMPLOYED': 'Employment Duration (Days)'
+    'DAYS_EMPLOYED': 'Employment Duration (Days)',
+    'ORGANIZATION_TYPE': 'Employer Organization Type',
+    'OCCUPATION_TYPE': 'Applicant Occupation Category',
+    'OWN_CAR_AGE': 'Vehicle Age (Years)',
+    'DAYS_REGISTRATION': 'Days Since Address Registration',
+    'DAYS_ID_PUBLISH': 'Days Since ID Document Issue',
+    'DAYS_LAST_PHONE_CHANGE': 'Days Since Contact Info Change',
+    'NAME_INCOME_TYPE': 'Income Source Category',
+    'NAME_EDUCATION_TYPE': 'Education Level',
+    'NAME_FAMILY_STATUS': 'Marital / Family Status',
+    'NAME_HOUSING_TYPE': 'Housing Ownership Status',
+    'NAME_CONTRACT_TYPE': 'Loan Contract Type',
+    'CODE_GENDER': 'Applicant Gender',
+    'FLAG_OWN_CAR': 'Car Ownership Flag',
+    'FLAG_OWN_REALTY': 'Realty Ownership Flag',
+    'CNT_CHILDREN': 'Number of Children',
+    'CNT_FAM_MEMBERS': 'Family Members Count',
+    'DOCUMENTS_PROVIDED_COUNT': 'Total Identity Documents Submitted'
 }
 
 def get_explainer():
@@ -45,8 +66,49 @@ def get_explainer():
     global _EXPLAINER
     if _EXPLAINER is None:
         model, metadata = load_scoring_model()
-        _EXPLAINER = shap.TreeExplainer(model)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _EXPLAINER = shap.TreeExplainer(model)
     return _EXPLAINER
+
+def extract_shap_vector_and_base(explainer, shap_values) -> Tuple[np.ndarray, float]:
+    """
+    Robustly extract 1D SHAP feature attribution vector for class 1 (default)
+    and base expected value across various SHAP return format versions.
+    """
+    # 1. Base expected value
+    exp_val = explainer.expected_value
+    if hasattr(exp_val, '__len__') and not isinstance(exp_val, (str, bytes)):
+        if len(exp_val) > 1:
+            base_val = float(exp_val[1])
+        elif len(exp_val) == 1:
+            base_val = float(exp_val[0])
+        else:
+            base_val = 0.0
+    else:
+        base_val = float(exp_val)
+
+    # 2. Extract values array
+    if hasattr(shap_values, 'values'):
+        vals = shap_values.values
+    else:
+        vals = shap_values
+
+    if isinstance(vals, list):
+        sv = vals[1] if len(vals) > 1 else vals[0]
+        if len(sv.shape) > 1:
+            sv = sv[0]
+    elif isinstance(vals, np.ndarray):
+        if len(vals.shape) == 3:
+            sv = vals[0, :, 1] if vals.shape[2] > 1 else vals[0, :, 0]
+        elif len(vals.shape) == 2:
+            sv = vals[0]
+        else:
+            sv = vals
+    else:
+        sv = np.array(vals)
+
+    return sv, base_val
 
 def explain_applicant(applicant_input: Dict) -> Dict:
     """
@@ -74,33 +136,33 @@ def explain_applicant(applicant_input: Dict) -> Dict:
             
     X_single = df_feat[feature_cols]
     
-    # Calculate SHAP values
+    # Calculate SHAP values safely
     explainer = get_explainer()
-    shap_values = explainer.shap_values(X_single)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        shap_values = explainer.shap_values(X_single)
     
-    # If binary output list, take class 1 (default)
-    if isinstance(shap_values, list):
-        sv = shap_values[1][0]
-    elif len(shap_values.shape) == 3:
-        sv = shap_values[0, :, 1]
-    else:
-        sv = shap_values[0]
-        
-    if isinstance(explainer.expected_value, (list, np.ndarray)):
-        expected_val = float(explainer.expected_value[1] if len(explainer.expected_value) > 1 else explainer.expected_value[0])
-    else:
-        expected_val = float(explainer.expected_value)
+    sv, expected_val = extract_shap_vector_and_base(explainer, shap_values)
     
     feature_shap = []
     for feat_name, val, s_val in zip(feature_cols, X_single.iloc[0].values, sv):
-        display_name = FEATURE_TRANSLATIONS.get(feat_name, feat_name)
-        val_str = f"{val:.4f}" if isinstance(val, (int, float, np.number)) and pd.notnull(val) else str(val)
+        display_name = FEATURE_TRANSLATIONS.get(feat_name, feat_name.replace('_', ' ').title())
         
+        if pd.notnull(val) and isinstance(val, (int, float, np.number)):
+            val_str = f"{float(val):.4f}"
+            raw_val = float(val)
+        elif pd.notnull(val):
+            val_str = str(val)
+            raw_val = None
+        else:
+            val_str = "Not Specified"
+            raw_val = None
+            
         feature_shap.append({
             "feature": feat_name,
             "display_name": display_name,
             "value": val_str,
-            "raw_val": float(val) if pd.notnull(val) and isinstance(val, (int, float, np.number)) else None,
+            "raw_val": raw_val,
             "shap_value": round(float(s_val), 4),
             "abs_shap": abs(float(s_val))
         })
