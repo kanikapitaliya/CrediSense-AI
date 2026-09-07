@@ -16,9 +16,24 @@ def build_application_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     
+    # Ensure raw columns exist with default NaN/fallback if missing in partial raw inputs
+    required_raw_cols = [
+        'AMT_ANNUITY', 'AMT_CREDIT', 'AMT_INCOME_TOTAL', 'AMT_GOODS_PRICE',
+        'DAYS_BIRTH', 'DAYS_EMPLOYED', 'CNT_FAM_MEMBERS', 'CNT_CHILDREN',
+        'EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3'
+    ]
+    for col in required_raw_cols:
+        if col not in df.columns:
+            if col == 'CNT_FAM_MEMBERS' and 'CNT_CHILDREN' in df.columns:
+                df['CNT_FAM_MEMBERS'] = df['CNT_CHILDREN'] + 1
+            else:
+                df[col] = np.nan
+                
+    fam_mem = df['CNT_FAM_MEMBERS'].fillna(1)
+    
     # Financial Ratios
     df['PAYMENT_RATE'] = df['AMT_ANNUITY'] / (df['AMT_CREDIT'] + 1e-5)
-    df['INCOME_PER_PERSON'] = df['AMT_INCOME_TOTAL'] / (df['CNT_FAM_MEMBERS'].fillna(1) + 1e-5)
+    df['INCOME_PER_PERSON'] = df['AMT_INCOME_TOTAL'] / (fam_mem + 1e-5)
     df['ANNUITY_TO_INCOME_RATIO'] = df['AMT_ANNUITY'] / (df['AMT_INCOME_TOTAL'] + 1e-5)
     df['CREDIT_TO_INCOME_RATIO'] = df['AMT_CREDIT'] / (df['AMT_INCOME_TOTAL'] + 1e-5)
     df['GOODS_TO_CREDIT_RATIO'] = df['AMT_GOODS_PRICE'] / (df['AMT_CREDIT'] + 1e-5)
@@ -168,7 +183,7 @@ def build_full_dataset(is_train: bool = True, sample_rows: Optional[int] = None)
     df_app = build_application_features(df_app)
     
     # Pass sample_rows * 5 to auxiliary table loaders when sampling for fast execution
-    aux_rows = sample_rows * 10 if sample_rows else None
+    aux_rows = sample_rows * 2 if sample_rows else None
     
     bureau_agg = build_bureau_features(nrows=aux_rows)
     prev_agg = build_previous_app_features(nrows=aux_rows)

@@ -1,0 +1,120 @@
+{
+  "model_type": "LightGBM Classifier",
+  "class_imbalance_strategy": "scale_pos_weight = 11.38 (Positive Class Weighting)",
+  "train_samples": 40000,
+  "test_samples": 10000,
+  "num_features": 158,
+  "metrics": {
+    "roc_auc": 0.7507,
+    "pr_auc": 0.2409,
+    "low_risk_threshold": 0.07,
+    "medium_risk_threshold": 0.18
+  },
+  "risk_band_distribution": {
+    "High Risk": 8192,
+    "Medium Risk": 1620,
+    "Low Risk": 188
+  },
+  "risk_band_default_rates": [
+    {
+      "risk_band": "High Risk",
+      "count": 8192,
+      "mean": 0.0946044921875,
+      "default_pct": 9.46
+    },
+    {
+      "risk_band": "Low Risk",
+      "count": 188,
+      "mean": 0.02127659574468085,
+      "default_pct": 2.13
+    },
+    {
+      "risk_band": "Medium Risk",
+      "count": 1620,
+      "mean": 0.016049382716049384,
+      "default_pct": 1.6
+    }
+  ],
+  "top_features": [
+    {
+      "feature": "ORGANIZATION_TYPE",
+      "importance": 282
+    },
+    {
+      "feature": "EXT_SOURCE_MEAN",
+      "importance": 128
+    },
+    {
+      "feature": "PAYMENT_RATE",
+      "importance": 119
+    },
+    {
+      "feature": "EXT_SOURCE_3",
+      "importance": 94
+    },
+    {
+      "feature": "EXT_SOURCE_2",
+      "importance": 72
+    },
+    {
+      "feature": "GOODS_TO_CREDIT_RATIO",
+      "importance": 69
+    },
+    {
+      "feature": "EXT_SOURCE_1",
+      "importance": 69
+    },
+    {
+      "feature": "OCCUPATION_TYPE",
+      "importance": 64
+    },
+    {
+      "feature": "AMT_ANNUITY",
+      "importance": 62
+    },
+    {
+      "feature": "OWN_CAR_AGE",
+      "importance": 59
+    },
+    {
+      "feature": "DAYS_REGISTRATION",
+      "importance": 56
+    },
+    {
+      "feature": "EXT_SOURCE_PROD",
+      "importance": 54
+    },
+    {
+      "feature": "EMPLOYMENT_TO_AGE_RATIO",
+      "importance": 52
+    },
+    {
+      "feature": "EXT_SOURCE_STD",
+      "importance": 52
+    },
+    {
+      "feature": "EMPLOYMENT_YEARS",
+      "importance": 51
+    },
+    {
+      "feature": "ANNUITY_TO_INCOME_RATIO",
+      "importance": 49
+    },
+    {
+      "feature": "DAYS_ID_PUBLISH",
+      "importance": 49
+    },
+    {
+      "feature": "DAYS_LAST_PHONE_CHANGE",
+      "importance": 47
+    },
+    {
+      "feature": "INCOME_PER_PERSON",
+      "importance": 41
+    },
+    {
+      "feature": "AMT_GOODS_PRICE",
+      "importance": 41
+    }
+  ]
+}
