@@ -50,29 +50,52 @@ def render_overview_view():
     with col_a:
         st.subheader("📌 Platform System Architecture")
         st.markdown("""
-        ```mermaid
-        graph TD
-            A[Home Credit Raw Datasets] --> B[Data Loader & Memory Downcaster]
-            B --> C[Feature Engineering & Historical Aggregations]
-            C --> D[LightGBM Model Training & Evaluation]
-            D --> E[Inference Engine & Risk Banding]
-            E --> F[SHAP Explainability & Business Translator]
-            E --> G[Business Decision Rules Engine]
-            B --> H[SQLite Indexed Query Layer]
-            H --> I[NL-to-SQL Engine & Safety Validator]
-            F --> J[Streamlit Interactive UI]
-            G --> J
-            I --> J
-        ```
+        <div class="arch-container">
+            <div class="arch-node">
+                <div class="arch-tag">1. Data Ingestion & Downcasting</div>
+                <div class="arch-title">Home Credit Datasets</div>
+                <div class="arch-desc">307,511 application rows • Memory reduction downcasting</div>
+            </div>
+            <div class="arch-arrow">▼</div>
+            <div class="arch-node">
+                <div class="arch-tag">2. Feature Pipeline</div>
+                <div class="arch-title">Applicant Ratios & Historical Aggregations</div>
+                <div class="arch-desc">160 features: Financial ratios, Bureau DPD, Installment shortfalls</div>
+            </div>
+            <div class="arch-arrow">▼</div>
+            <div class="arch-node">
+                <div class="arch-tag">3. ML & Scoring Engine</div>
+                <div class="arch-title">LightGBM Classifier & Risk Banding</div>
+                <div class="arch-desc">Out-of-fold evaluation (ROC-AUC 0.7507) • Class weight 11.38</div>
+            </div>
+            <div class="arch-arrow">▼</div>
+            <div class="arch-split">
+                <div class="arch-node arch-half">
+                    <div class="arch-tag">4A. Explainability</div>
+                    <div class="arch-title">SHAP Explainer</div>
+                    <div class="arch-desc">Waterfall & Plain-language translation</div>
+                </div>
+                <div class="arch-node arch-half">
+                    <div class="arch-tag">4B. Business Rules</div>
+                    <div class="arch-title">Rules Engine</div>
+                    <div class="arch-desc">Empirical policy rules evaluation</div>
+                </div>
+            </div>
+            <div class="arch-arrow">▼</div>
+            <div class="arch-node">
+                <div class="arch-tag">5. Relational Query & Interface</div>
+                <div class="arch-title">SQLite Database & Streamlit Intelligence UI</div>
+                <div class="arch-desc">Read-only SQL safety validator + Natural language querying</div>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
         
     with col_b:
         st.subheader("🎯 Analytical Risk Band Definitions")
         st.markdown(f"""
         - 🟢 **Low Risk Band** (`prob < {LOW_RISK_MAX_PROB}`): Applicants with prime external scores and strong financial stability. Eligible for automated fast-track approval.
-        - 🟠 **Medium Risk Band** (`{LOW_RISK_MAX_PROB} <= prob < {MEDIUM_RISK_MAX_PROB}`): Standard applicants requiring standard underwriting verification of income and employment.
-        - 🔴 **High Risk Band** (`prob >= {MEDIUM_RISK_MAX_PROB}`): Applicants with high probability of payment difficulties. Requires senior credit officer manual review or guarantor.
         
-        > [!NOTE]
-        > **Anti-Hallucination Guarantee**: All numbers, statistics, rule thresholds, and SQL query answers are calculated directly from authentic project datasets without synthetic or fake overrides.
+        - 🟠 **Medium Risk Band** (`{LOW_RISK_MAX_PROB} <= prob < {MEDIUM_RISK_MAX_PROB}`): Standard applicants requiring standard underwriting verification of income and employment.
+        
+        - 🔴 **High Risk Band** (`prob >= {MEDIUM_RISK_MAX_PROB}`): Applicants with high probability of payment difficulties. Requires senior credit officer manual review or guarantor.
         """)

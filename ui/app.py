@@ -26,7 +26,6 @@ def main():
     apply_custom_styles()
     
     # Sidebar Navigation
-    st.sidebar.image("https://img.icons8.com/isometric-folders/100/bank.png", width=64)
     st.sidebar.title("CrediSense AI")
     st.sidebar.caption("Credit Risk Intelligence Platform v1.0.0")
     st.sidebar.divider()

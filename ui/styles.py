@@ -129,5 +129,49 @@ def apply_custom_styles():
         color: #38BDF8;
         font-size: 13px;
     }
+    
+    /* Architecture Flow Cards */
+    .arch-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .arch-node {
+        background: #1E293B;
+        border: 1px solid #334155;
+        border-left: 4px solid #818CF8;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
+    .arch-tag {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #818CF8;
+        letter-spacing: 0.5px;
+    }
+    .arch-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #F8FAFC;
+        margin-top: 2px;
+    }
+    .arch-desc {
+        font-size: 11px;
+        color: #94A3B8;
+    }
+    .arch-arrow {
+        text-align: center;
+        color: #64748B;
+        font-size: 10px;
+        line-height: 1;
+    }
+    .arch-split {
+        display: flex;
+        gap: 8px;
+    }
+    .arch-half {
+        flex: 1;
+    }
     </style>
     """, unsafe_allow_html=True)
