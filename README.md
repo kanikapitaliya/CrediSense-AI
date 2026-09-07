@@ -52,7 +52,6 @@
 | 4 | Converts ML feature importances + empirical patterns into if-then credit policy rules | `⚖️ Decision Rules Engine` |
 | 5 | Lets anyone ask questions about the portfolio in plain English and get grounded, SQL-backed answers | `💬 Talk-to-Data` |
 
-> 💡 No API key? No problem. Every module — scoring, SHAP, rules — runs fully offline on pre-trained artifacts. Only the chat module needs a Gemini key, and it degrades gracefully to a deterministic query engine if the key is missing.
 
 ---
 
@@ -251,8 +250,6 @@ Open `http://localhost:8501`.
 | `GEMINI_API_KEY` | ⭕ Optional | *(none)* | Enables LLM-powered NL→SQL translation & summarization |
 | `GEMINI_MODEL` | ⭕ Optional | `gemini-2.5-flash` | Which Gemini model to call |
 
-`.env` is git-ignored — never commit real credentials. See [`.env.example`](.env.example) for the template.
-
 ---
 
 ## 🤖 The ML Layer
@@ -395,6 +392,5 @@ Five headline findings out of the full exploratory analysis (see the `📊 EDA &
 
 <div align="center">
 
-Built with ☕ and a healthy respect for class imbalance.
 
 </div>
