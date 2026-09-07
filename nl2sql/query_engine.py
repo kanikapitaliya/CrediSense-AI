@@ -2,52 +2,25 @@ import os
 import json
 import re
 import pandas as pd
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, List
+from config.settings import GEMINI_API_KEY, GEMINI_MODEL
 from nl2sql.validator import validate_sql_query
+from nl2sql.prompts import (
+    build_sql_generation_prompt,
+    build_answer_summary_prompt,
+    SQL_SCHEMA_PROMPT
+)
 from sql.db_manager import execute_raw_sql
 
-SCHEMA_DESCRIPTION = """
-Database Schema (SQLite):
-1. TABLE applications (
-    SK_ID_CURR INT PRIMARY KEY,
-    TARGET INT (0: Non-Default, 1: Default),
-    TARGET_LABEL TEXT ('Non-Default', 'Default'),
-    NAME_CONTRACT_TYPE TEXT ('Cash loans', 'Revolving loans'),
-    CODE_GENDER TEXT ('M', 'F'),
-    FLAG_OWN_CAR TEXT ('Y', 'N'),
-    FLAG_OWN_REALTY TEXT ('Y', 'N'),
-    CNT_CHILDREN INT,
-    AMT_INCOME_TOTAL FLOAT,
-    AMT_CREDIT FLOAT,
-    AMT_ANNUITY FLOAT,
-    AMT_GOODS_PRICE FLOAT,
-    NAME_INCOME_TYPE TEXT ('Working', 'Commercial associate', 'Pensioner', 'State servant'),
-    NAME_EDUCATION_TYPE TEXT ('Higher education', 'Secondary / secondary special', 'Incomplete higher', 'Lower secondary', 'Academic degree'),
-    NAME_FAMILY_STATUS TEXT,
-    NAME_HOUSING_TYPE TEXT,
-    AGE_YEARS FLOAT,
-    EMPLOYMENT_YEARS FLOAT,
-    ANNUITY_TO_INCOME FLOAT,
-    EXT_SOURCE_MEAN FLOAT
-)
-2. TABLE bureau_summary (
-    SK_ID_CURR INT PRIMARY KEY,
-    total_bureau_loans INT,
-    active_loans INT,
-    closed_loans INT,
-    total_credit_sum FLOAT,
-    total_debt_sum FLOAT,
-    max_days_overdue INT
-)
-3. TABLE previous_applications_summary (
-    SK_ID_CURR INT PRIMARY KEY,
-    prev_app_count INT,
-    approved_count INT,
-    refused_count INT,
-    total_prev_credit FLOAT,
-    avg_prev_credit FLOAT
-)
-"""
+# Import official Google GenAI SDK
+try:
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
+
+SCHEMA_DESCRIPTION = SQL_SCHEMA_PROMPT
 
 PRESET_PATTERNS = [
     {
@@ -82,9 +55,84 @@ PRESET_PATTERNS = [
     }
 ]
 
+def is_gemini_configured() -> bool:
+    """
+    Return True if google-genai SDK is installed and valid GEMINI_API_KEY is configured.
+    """
+    return bool(GENAI_AVAILABLE and GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here")
+
+def clean_sql_output(raw_text: str) -> str:
+    """
+    Extract pure SQL string from Gemini response text (stripping markdown code blocks).
+    """
+    text = raw_text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    return text
+
+def generate_sql_with_gemini(user_question: str, conversation_history: Optional[List[Dict]] = None) -> Tuple[bool, str, str]:
+    """
+    Call Gemini API to generate SQL query for natural language question.
+    Returns (success, sql_or_error_message, raw_response).
+    """
+    if not is_gemini_configured():
+        return False, "Gemini API key is not configured.", ""
+
+    prompt = build_sql_generation_prompt(user_question, conversation_history)
+    
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        model_name = GEMINI_MODEL or "gemini-2.5-flash"
+        
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.0,
+                max_output_tokens=300
+            )
+        )
+        
+        raw_text = response.text or ""
+        sql_query = clean_sql_output(raw_text)
+        return True, sql_query, raw_text
+    except Exception as e:
+        return False, f"Gemini API Error: {str(e)}", ""
+
+def summarize_answer_with_gemini(user_question: str, sql_query: str, df_result: pd.DataFrame) -> Optional[str]:
+    """
+    Call Gemini API to generate a grounded, natural-language business answer strictly from returned SQL dataframe.
+    """
+    if not is_gemini_configured() or df_result.empty:
+        return None
+
+    records = df_result.to_dict(orient='records')
+    prompt = build_answer_summary_prompt(user_question, sql_query, records)
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        model_name = GEMINI_MODEL or "gemini-2.5-flash"
+
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.2,
+                max_output_tokens=400
+            )
+        )
+        return response.text.strip() if response.text else None
+    except Exception:
+        return None
+
 def format_grounded_answer(sql_query: str, df_result: pd.DataFrame, question: str) -> str:
     """
-    Generate a grounded natural language summary strictly from returned SQL dataframe.
+    Generate a deterministic grounded summary from returned SQL dataframe (fallback).
     """
     if df_result.empty:
         return "No matching records were found in the database for your query."
@@ -92,7 +140,6 @@ def format_grounded_answer(sql_query: str, df_result: pd.DataFrame, question: st
     num_rows = len(df_result)
     cols = df_result.columns.tolist()
     
-    # Formulate tabular text
     lines = [f"**Query Results Summary** ({num_rows} records returned):\n"]
     
     if num_rows <= 10:
@@ -107,26 +154,112 @@ def format_grounded_answer(sql_query: str, df_result: pd.DataFrame, question: st
         
     return "\n".join(lines)
 
-def process_natural_language_query(user_question: str) -> Dict:
+def match_fallback_pattern(user_question: str) -> Dict:
     """
-    Process NL question, translate/match to SQL, validate, execute, and return grounded answer.
+    Deterministic keyword pattern matcher fallback.
     """
     q_lower = user_question.lower().strip()
-    
-    # Match query pattern
-    matched_pattern = None
     for pattern in PRESET_PATTERNS:
         if any(kw in q_lower for kw in pattern["keywords"]):
-            matched_pattern = pattern
-            break
-            
-    if not matched_pattern:
-        # Default to education default rates pattern if no keyword match
-        matched_pattern = PRESET_PATTERNS[0]
+            return pattern
+    return PRESET_PATTERNS[0]
+
+def process_natural_language_query(user_question: str, conversation_history: Optional[List[Dict]] = None) -> Dict:
+    """
+    Process NL question via Gemini API -> SQL Validation -> Execution -> Grounded Answer.
+    Falls back gracefully to deterministic query patterns if API key is missing or call fails.
+    """
+    # 1. Attempt Gemini LLM Generation if configured
+    if is_gemini_configured():
+        gemini_success, gen_sql_or_err, raw_resp = generate_sql_with_gemini(user_question, conversation_history)
         
-    sql_query = matched_pattern["sql"]
+        if gemini_success:
+            sql_query = gen_sql_or_err
+            is_valid, val_msg = validate_sql_query(sql_query)
+            
+            if is_valid:
+                try:
+                    df_res, duration_ms = execute_raw_sql(sql_query)
+                    
+                    # Generate Gemini grounded answer, or fallback to deterministic summary
+                    llm_ans = summarize_answer_with_gemini(user_question, sql_query, df_res)
+                    grounded_ans = llm_ans if llm_ans else format_grounded_answer(sql_query, df_res, user_question)
+                    
+                    return {
+                        "question": user_question,
+                        "status": "SUCCESS",
+                        "sql": sql_query,
+                        "execution_time_ms": duration_ms,
+                        "row_count": len(df_res),
+                        "data": df_res.to_dict(orient='records'),
+                        "data_df": df_res,
+                        "grounded_answer": grounded_ans,
+                        "llm_mode": f"Gemini LLM ({GEMINI_MODEL})",
+                        "is_llm": True,
+                        "pattern_title": "Gemini Dynamic NL-to-SQL Query"
+                    }
+                except Exception as e:
+                    fallback = match_fallback_pattern(user_question)
+                    fallback_sql = fallback["sql"]
+                    df_res, duration_ms = execute_raw_sql(fallback_sql)
+                    
+                    return {
+                        "question": user_question,
+                        "status": "SUCCESS",
+                        "sql": fallback_sql,
+                        "execution_time_ms": duration_ms,
+                        "row_count": len(df_res),
+                        "data": df_res.to_dict(orient='records'),
+                        "data_df": df_res,
+                        "grounded_answer": format_grounded_answer(fallback_sql, df_res, user_question),
+                        "llm_mode": "Deterministic Fallback (Gemini SQL Execution Error)",
+                        "is_llm": False,
+                        "pattern_title": fallback["title"],
+                        "warning": f"Gemini SQL Execution Error: {str(e)}. Used fallback pattern."
+                    }
+            else:
+                fallback = match_fallback_pattern(user_question)
+                fallback_sql = fallback["sql"]
+                df_res, duration_ms = execute_raw_sql(fallback_sql)
+                
+                return {
+                    "question": user_question,
+                    "status": "SUCCESS",
+                    "sql": fallback_sql,
+                    "execution_time_ms": duration_ms,
+                    "row_count": len(df_res),
+                    "data": df_res.to_dict(orient='records'),
+                    "data_df": df_res,
+                    "grounded_answer": format_grounded_answer(fallback_sql, df_res, user_question),
+                    "llm_mode": "Deterministic Fallback (Gemini SQL Validation Error)",
+                    "is_llm": False,
+                    "pattern_title": fallback["title"],
+                    "warning": f"Gemini SQL Validation Failed: {val_msg}. Used fallback pattern."
+                }
+        else:
+            fallback = match_fallback_pattern(user_question)
+            fallback_sql = fallback["sql"]
+            df_res, duration_ms = execute_raw_sql(fallback_sql)
+            
+            return {
+                "question": user_question,
+                "status": "SUCCESS",
+                "sql": fallback_sql,
+                "execution_time_ms": duration_ms,
+                "row_count": len(df_res),
+                "data": df_res.to_dict(orient='records'),
+                "data_df": df_res,
+                "grounded_answer": format_grounded_answer(fallback_sql, df_res, user_question),
+                "llm_mode": "Deterministic Fallback (Gemini API Call Error)",
+                "is_llm": False,
+                "pattern_title": fallback["title"],
+                "warning": f"{gen_sql_or_err}. Used fallback pattern."
+            }
+
+    # 2. Deterministic Pattern Processing (when GEMINI_API_KEY is not configured)
+    fallback = match_fallback_pattern(user_question)
+    sql_query = fallback["sql"]
     
-    # 1. Validate SQL
     is_valid, val_msg = validate_sql_query(sql_query)
     if not is_valid:
         return {
@@ -135,17 +268,18 @@ def process_natural_language_query(user_question: str) -> Dict:
             "error": val_msg,
             "sql": sql_query,
             "data": None,
-            "grounded_answer": f"⚠️ SQL Validation Failed: {val_msg}"
+            "grounded_answer": f"⚠️ SQL Validation Failed: {val_msg}",
+            "llm_mode": "Deterministic Verified Pattern (Gemini Key Not Set)",
+            "is_llm": False
         }
         
-    # 2. Execute SQL
     try:
         df_res, duration_ms = execute_raw_sql(sql_query)
         grounded_ans = format_grounded_answer(sql_query, df_res, user_question)
         
         return {
             "question": user_question,
-            "pattern_title": matched_pattern["title"],
+            "pattern_title": fallback["title"],
             "status": "SUCCESS",
             "sql": sql_query,
             "execution_time_ms": duration_ms,
@@ -153,7 +287,9 @@ def process_natural_language_query(user_question: str) -> Dict:
             "data": df_res.to_dict(orient='records'),
             "data_df": df_res,
             "grounded_answer": grounded_ans,
-            "llm_mode": "Deterministic Verified NL-to-SQL Engine"
+            "llm_mode": "Deterministic Verified Pattern (Gemini Key Not Set)",
+            "is_llm": False,
+            "info": "💡 To enable AI-powered SQL generation, configure GEMINI_API_KEY in your .env file."
         }
     except Exception as e:
         return {
@@ -162,12 +298,15 @@ def process_natural_language_query(user_question: str) -> Dict:
             "error": str(e),
             "sql": sql_query,
             "data": None,
-            "grounded_answer": f"❌ SQL Execution Error: {str(e)}"
+            "grounded_answer": f"❌ SQL Execution Error: {str(e)}",
+            "llm_mode": "Deterministic Verified Pattern",
+            "is_llm": False
         }
 
 if __name__ == '__main__':
     print("Testing NL2SQL Query Engine...")
+    print("Is Gemini Configured?:", is_gemini_configured())
     res = process_natural_language_query("What is the default rate by education level?")
-    print("Query Title:", res.get("pattern_title"))
+    print("Query Mode:", res.get("llm_mode"))
     print("SQL:", res.get("sql"))
     print("Grounded Answer:\n", res.get("grounded_answer"))

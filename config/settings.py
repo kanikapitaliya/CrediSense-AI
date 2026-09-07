@@ -1,8 +1,13 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Base Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file if present
+load_dotenv(BASE_DIR / ".env")
+
 DATASETS_DIR = BASE_DIR / "datasets"
 DATA_DIR = BASE_DIR / "data"
 MODELS_DIR = BASE_DIR / "models"
@@ -49,6 +54,10 @@ FORBIDDEN_SQL_KEYWORDS = {
     "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE",
     "CREATE", "RENAME", "REPLACE", "GRANT", "REVOKE", "EXEC", "EXECUTE"
 }
+
+# Gemini LLM Config
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 
 # Version info
 VERSION = "1.0.0"
