@@ -4,3 +4,10 @@ venv/
 __pycache__/
 .env
 *.pyc
+*.db
+*.sqlite
+*.joblib
+*.pkl
+models/saved_models/
+data/cached/
+.DS_Store
