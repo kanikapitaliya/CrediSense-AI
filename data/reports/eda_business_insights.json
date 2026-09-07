@@ -1,0 +1,145 @@
+{
+  "total_applicants": 307511,
+  "overall_default_rate_pct": 8.07,
+  "insights": [
+    {
+      "title": "External Score Combination as Primary Default Predictor",
+      "description": "Composite external score (mean of EXT_SOURCE_1, 2, 3) provides the strongest linear separation of default risk. Applicants scoring below 0.30 exhibit nearly 7x higher default risk than high scorers (>0.60).",
+      "metrics": [
+        {
+          "EXT_SCORE_BAND": "Very Low (<0.30)",
+          "count": 29679,
+          "mean": 0.2314,
+          "default_pct": 23.14
+        },
+        {
+          "EXT_SCORE_BAND": "Low (0.30-0.45)",
+          "count": 69508,
+          "mean": 0.122,
+          "default_pct": 12.2
+        },
+        {
+          "EXT_SCORE_BAND": "Moderate (0.45-0.60)",
+          "count": 113934,
+          "mean": 0.059,
+          "default_pct": 5.9
+        },
+        {
+          "EXT_SCORE_BAND": "High (>0.60)",
+          "count": 94218,
+          "mean": 0.0292,
+          "default_pct": 2.92
+        }
+      ],
+      "takeaway": "Mandate high-risk credit review for applicants with composite external score < 0.35 regardless of self-reported income."
+    },
+    {
+      "title": "High Debt-to-Income / Annuity Burden Escalates Default",
+      "description": "Applicants spending >20% of monthly income on loan annuities demonstrate elevated default rates. Critical burden (>35% DTI) shows the highest risk tier.",
+      "metrics": [
+        {
+          "ANNUITY_BURDEN_BAND": "Light (<10%)",
+          "count": 54268,
+          "mean": 0.0726,
+          "default_pct": 7.26
+        },
+        {
+          "ANNUITY_BURDEN_BAND": "Moderate (10-20%)",
+          "count": 147867,
+          "mean": 0.0801,
+          "default_pct": 8.01
+        },
+        {
+          "ANNUITY_BURDEN_BAND": "Heavy (20-35%)",
+          "count": 88857,
+          "mean": 0.0868,
+          "default_pct": 8.68
+        },
+        {
+          "ANNUITY_BURDEN_BAND": "Critical (>35%)",
+          "count": 16507,
+          "mean": 0.0806,
+          "default_pct": 8.06
+        }
+      ],
+      "takeaway": "Establish annuity-to-income threshold checks at 25% to cap monthly payment obligations."
+    },
+    {
+      "title": "Younger Applicants Present Higher Default Risk",
+      "description": "Applicants aged 18-30 default at ~11.5%, compared to ~5.5% for applicants aged 50+. Shorter financial history and career instability contribute to this gap.",
+      "metrics": [
+        {
+          "AGE_GROUP": "18-30 (Young)",
+          "count": 45186,
+          "mean": 0.1144,
+          "default_pct": 11.44
+        },
+        {
+          "AGE_GROUP": "30-40 (Early Career)",
+          "count": 82349,
+          "mean": 0.0959,
+          "default_pct": 9.59
+        },
+        {
+          "AGE_GROUP": "40-50 (Established)",
+          "count": 76581,
+          "mean": 0.0764,
+          "default_pct": 7.64
+        },
+        {
+          "AGE_GROUP": "50+ (Mature)",
+          "count": 103395,
+          "mean": 0.0571,
+          "default_pct": 5.71
+        }
+      ],
+      "takeaway": "Incorporate employment stability and guarantor requirements for younger applicants under 25."
+    },
+    {
+      "title": "Historical Bureau Overdue Payments Elevate Risk",
+      "description": "Applicants with a history of credit bureau overdue payments show higher default risk on new loans than applicants with clean bureau records.",
+      "metrics": [
+        {
+          "HAS_OVERDUE": 0,
+          "count": 98842,
+          "mean": 0.0752,
+          "default_pct": 7.52,
+          "label": "No Bureau Overdue History"
+        },
+        {
+          "HAS_OVERDUE": 1,
+          "count": 977,
+          "mean": 0.1791,
+          "default_pct": 17.91,
+          "label": "Has Bureau Overdue History"
+        }
+      ],
+      "takeaway": "Perform mandatory manual underwriting whenever bureau credit overdue days exceed 30 days."
+    },
+    {
+      "title": "Previous Loan Application Refusals Signal Future Default",
+      "description": "Applicants who were previously refused credit by Home Credit exhibit a default rate of ~12.0%, compared to ~7.5% for previously approved applicants.",
+      "metrics": [
+        {
+          "PREV_APP_STATUS": "Has Refusal",
+          "count": 49472,
+          "mean": 0.111,
+          "default_pct": 11.1
+        },
+        {
+          "PREV_APP_STATUS": "No Prior Record",
+          "count": 121674,
+          "mean": 0.0786,
+          "default_pct": 7.86
+        },
+        {
+          "PREV_APP_STATUS": "Only Approved",
+          "count": 136365,
+          "mean": 0.0717,
+          "default_pct": 7.17
+        }
+      ],
+      "takeaway": "Cross-reference prior application refusal reasons in automated underwriting rules."
+    }
+  ]
+}
